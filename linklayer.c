@@ -1,6 +1,6 @@
 #include "linklayer.h"
 
-
+//Realizado por Gonçalo Coelho (up202005368) e Marco Moreira (up202004135)
 
 //Constantes definidas para os valores hexadecimais usados no protocolo de comunicação
 #define F 0x5c
