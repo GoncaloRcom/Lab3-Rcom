@@ -1,6 +1,6 @@
 #include "linklayer.h"
 
-//Realizado por Gonçalo Coelho (up202005368) e Marco Moreira (up202004135)
+
 
 //Constantes definidas para os valores hexadecimais usados no protocolo de comunicação
 #define F 0x5c
@@ -219,6 +219,7 @@ int llopen(linkLayer connectionParameters) {
                     if(send < 0) {
                         return -1;
                     }
+                    printf("SET resent\n");
 
                     start_alarm(connectionParameters.timeOut);
                     count++;
@@ -271,7 +272,7 @@ int llopen(linkLayer connectionParameters) {
 int llwrite(char* buf, int bufSize) {
 
     unsigned char frame[2 * MAX_PAYLOAD_SIZE + 6], r[5], bcc2;
-    int frameSize = 0, receive, send, i;
+    int frameSize = 0, receive, send, i, count = 0;
     STOP = FALSE;
 
     //Guarda o cabeçalho da trama I
@@ -316,9 +317,29 @@ int llwrite(char* buf, int bufSize) {
     }
     printf("first frame I sent\n");
 
+    //Inicia o temporizador
+    start_alarm(3);
     while(STOP == FALSE) {
         //Recebe a trama
         receive = receive_frame(r, fd);
+
+        //Caso o alarme chegue ao fim, é verificado se se deve retransmitir a trama ou acabar a ligação
+        if(TIMEOUT == TRUE) {
+            if(count < 3) {
+                send = send_frame(frame, frameSize, fd);
+                if(send < 0) {
+                    return -1;
+                }
+                printf("frame I resent\n");
+
+                start_alarm(3);
+                count++;
+            }
+            else {
+                printf("time out\n");
+                return -1;
+            }
+        }
 
         //Caso a trama recebida corresponda à trama RR0, envia a segunda trama I.        
         if(receive > 0 && r[0] == F && r[1] == A0 && r[2] == C_RR0 && r[3] == (A0 ^ C_RR0) && r[4] == F) {
@@ -333,6 +354,8 @@ int llwrite(char* buf, int bufSize) {
                 return -1;
             }
             printf("second frame I sent\n");
+            start_alarm(3);
+            count = 0;
         } 
         //Caso a trama recebida corresponda à trama REJ0, reenvia a trama I
         else if(receive > 0 && r[0] == F && r[1] == A0 && r[2] == C_REJ0 && r[3] == (A0 ^ C_REJ0) && r[4] == F) {
@@ -349,6 +372,7 @@ int llwrite(char* buf, int bufSize) {
             printf("RR1 received\n");
             
             STOP = TRUE;
+            start_alarm(0);
         } 
         //Caso a trama recebida corresponda à trama REJ1, reenvia a segunda trama I
         else if(receive > 0 && r[0] == F && r[1] == A0 && r[2] == C_REJ1 && r[3] == (A0 ^ C_REJ1) && r[4] == F) {
@@ -372,7 +396,7 @@ int llread(char* packet) {
         //Recebe a trama
         receive = receive_frame(frame, fd);
 
-        //Caso a trama recebida corresponda à trama I, verifica o BCC2 e envia uma trama RR0 ou REJ0
+        //Caso a trama recebida corresponda à trama I, verifica o BCC2 e enviar uma trama RR0 ou REJ0
         if(receive > 0 && frame[0] == F && frame[1] == A0 && frame[2] == C_I0 && frame[3] == (A0 ^ C_I0) && frame[receive - 1] == F) {
             printf("first frame I received\n");
 
@@ -471,7 +495,7 @@ int llread(char* packet) {
 
 int llclose(linkLayer connectionParameters, int showStatistics) {
     unsigned char disc[5], ua[5], cv[5];
-    int receive, send;
+    int receive, send, count = 0;
     STOP = FALSE;
 
     //MODO EMISSOR
@@ -495,9 +519,29 @@ int llclose(linkLayer connectionParameters, int showStatistics) {
         }
         printf("DISC sent\n");
 
+        //Inicia o temporizador
+        start_alarm(3);
         while(STOP == FALSE) {
             //Recebe a trama
             receive = receive_frame(disc, fd);
+
+            //Caso o alarme chegue ao fim, é verificado se se deve retransmitir a trama ou acabar a ligação
+            if(TIMEOUT == TRUE) {
+                if(count < 3) {
+                    send = send_frame(disc, 5, fd);
+                    if(send < 0) {
+                        return -1;
+                    }
+                    printf("DISC resent\n");
+
+                    start_alarm(3);
+                    count++;
+                }
+                else {
+                    printf("time out\n");
+                    return -1;
+                }
+            }
 
             //Caso a trama recebida corresponda à trama DISC, envia a trama UA e termina o ciclo de leitura
             if(receive > 0 && disc[0] == F && disc[1] == A1 && disc[2] == C_DISC && disc[3] == (A1 ^ C_DISC) && disc[4] == F) {
@@ -510,6 +554,7 @@ int llclose(linkLayer connectionParameters, int showStatistics) {
                 printf("UA sent\n");
 
                 STOP = TRUE;
+                start_alarm(0);
             }
         }
     } 
