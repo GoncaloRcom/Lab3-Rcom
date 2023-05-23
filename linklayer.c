@@ -44,6 +44,10 @@ void start_alarm(int sec) {  //Função que implementa o alarme/temporizador
 
 int send_frame(unsigned char* frame, int size, int fd) {  //Função que envia uma trama pela porta serie
    
+    //Limpa a ligação
+    tcflush(fd, TCIOFLUSH);
+
+    //Envia a trama
     int send = write(fd, frame, size);
     if(send == -1) {
         perror("write");
