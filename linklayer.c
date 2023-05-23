@@ -1,5 +1,7 @@
 #include "linklayer.h"
 
+//Realizado por Gonçalo Coelho (up202005368) e Marco Moreira (up202004135)
+
 //Constantes definidas para os valores hexadecimais usados no protocolo de comunicação
 #define F 0x5c
 #define A0 0x01
@@ -370,7 +372,7 @@ int llread(char* packet) {
         //Recebe a trama
         receive = receive_frame(frame, fd);
 
-        //Caso a trama recebida corresponda à trama I, verifica o BCC2 e enviar uma trama RR0 ou REJ0
+        //Caso a trama recebida corresponda à trama I, verifica o BCC2 e envia uma trama RR0 ou REJ0
         if(receive > 0 && frame[0] == F && frame[1] == A0 && frame[2] == C_I0 && frame[3] == (A0 ^ C_I0) && frame[receive - 1] == F) {
             printf("first frame I received\n");
 
